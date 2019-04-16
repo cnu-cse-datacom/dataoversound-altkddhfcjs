@@ -118,26 +118,17 @@ public class Listentone {
     }
 
     /*dominant(frame_rate, chunk)*/
-    private double findFrequency(short[] toTransform){
-        int len = findPowerSize(toTransform.length);
+    private double findFrequency(double[] toTransform){
+        int len = toTransform.length;
         //Log.d("ListenToneInLen: ", String.valueOf(len));
         double[] real = new double[len];
         double[] img = new double[len];
         double realNum;
         double imgNum;
         double[] mag = new double[len];
-        //Reed solomon - zero padding
-        double[] DoubletoTranform = new double[len];
-
-        for(int i = 0; i < toTransform.length; i++) {
-            DoubletoTranform[i] = (double) toTransform[i];
-        }
-        for(int i = toTransform.length; i < len; i++){
-            DoubletoTranform[i] = 0;
-        }
 
         /* freqs = np.fft.fftfreq(len(chunk)) */
-        Complex[] complx = transform.transform(DoubletoTranform, TransformType.FORWARD);
+        Complex[] complx = transform.transform(toTransform, TransformType.FORWARD);
         //Log.d("ListenToneComplxSize: ", String.valueOf(complx.length));
         Double[] freq = this.fftfreq(complx.length, 1);
 
@@ -258,14 +249,26 @@ public class Listentone {
              *  Reads audio data from the audio hardware for recording into a short array.
              *  https://developer.android.com/reference/android/media/AudioRecord  */
             int bufferedReadResult = mAudioRecord.read(buffer, 0, blocksize);
+
             if (bufferedReadResult != blocksize) {
                 Log.d("ListenToneContinue: ", "---continue----");
                 continue;
             }
-            //System.arraycopy((double)buffer, 0, transform, 0, blocksize);
-            /*dom = dominant(frame_rate, chunk)*/
 
-            double dom = findFrequency(buffer);
+            //Reed solomon - zero padding 4096
+            double[] toTranform = new double[findPowerSize(buffer.length)];
+
+            for(int i = 0; i < buffer.length; i++) {
+                toTranform[i] = (double) buffer[i];
+            }
+            for(int i = buffer.length; i < findPowerSize(buffer.length); i++){
+                toTranform[i] = 0;
+            }
+
+
+            //System.arraycopy((double)buffer, 0, transform, 0, blocksize);
+            double dom = findFrequency(toTranform);
+            //double dom = findFrequency(buffer);
             //Log.d("ListenToneDom: ", String.valueOf(dom));
             /*End Input*/
             if (startFlag && Math.abs(dom - HANDSHAKE_END_HZ) < 20) {
